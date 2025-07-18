@@ -1,0 +1,10 @@
+{
+  "name": "pe-ratio-fetcher",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node fetch.js"
+  },
+  "dependencies": {
+    "puppeteer": "^24.14.0"
+  }
+}

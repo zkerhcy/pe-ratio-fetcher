@@ -1,0 +1,12 @@
+{
+  "forward": {
+    "S&P-500": {
+      "current": "22.79",
+      "previous": "22.67"
+    },
+    "CSI-300": {
+      "current": "22.79",
+      "previous": "22.67"
+    }
+  }
+}
