@@ -1,39 +1,48 @@
 const puppeteer = require('puppeteer')
 const { updatePERatio } = require('./utils.js')
 
+const URL = 'https://sc.macromicro.me/series/20052/sp500-forward-pe-ratio'
+const CURRENT_SELECTOR = '#panel main .chart-theater-sidebar .stat-val > span.val'
+const PREV_SELECTOR = '#panel main .chart-theater-sidebar .prev-val > span.val'
+
 ;(async () => {
   const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled'
+    ]
   })
 
-  const page = await browser.newPage()
+  let page
+  try {
+    page = await browser.newPage()
 
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
-  await page.setViewport({ width: 1280, height: 800 })
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
+    })
 
-  await page.goto('https://sc.macromicro.me/series/20052/sp500-forward-pe-ratio', {
-    waitUntil: 'networkidle2',
-    timeout: 0
-  })
+    await page.setUserAgent(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    )
+    await page.setViewport({ width: 1280, height: 800 })
 
-  const currentSelector = '#panel main .chart-theater-sidebar .stat-val > span.val'
-  const previousSelector = '#panel main .chart-theater-sidebar .prev-val > span.val'
+    await page.goto(URL, { waitUntil: 'networkidle2', timeout: 0 })
 
-  await page.waitForSelector(currentSelector, { timeout: 60000 })
-  await page.waitForSelector(previousSelector, { timeout: 60000 })
+    await page.screenshot({ path: 'debug.png' })
 
-  const result = await page.evaluate((currentSel, previousSel) => {
-    const currentValEl = document.querySelector(currentSel)
-    const prevValEl = document.querySelector(previousSel)
+    await page.waitForSelector(CURRENT_SELECTOR, { timeout: 60000 })
+    await page.waitForSelector(PREV_SELECTOR, { timeout: 60000 })
 
-    return {
-      current: currentValEl ? currentValEl.innerText.trim() : null,
-      previous: prevValEl ? prevValEl.innerText.trim() : null
-    }
-  }, currentSelector, previousSelector)
+    const result = await page.evaluate((currentSel, prevSel) => ({
+      current: document.querySelector(currentSel)?.innerText.trim() ?? null,
+      previous: document.querySelector(prevSel)?.innerText.trim() ?? null
+    }), CURRENT_SELECTOR, PREV_SELECTOR)
 
-  updatePERatio('S&P-500', result)
-
-  await browser.close()
+    console.log('Fetched:', result)
+    updatePERatio('S&P-500', result)
+  } finally {
+    await browser.close()
+  }
 })()
